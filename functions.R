@@ -73,10 +73,9 @@ f.OD3=function(p1,p2,p3,OR,ratio)
   ### optimality criterion as a function of prop.i ### fixed budget
   ####################################################################################################
   prop.i=seq(0.01,0.99,by=0.01)
-  D.opt=rep(0,length(prop.i))
   c.opt=rep(0,length(prop.i))
   
-  B=10000					### budget
+  B=1					### budget
   c.c=1					### costs per subject in control
   c.i=ratio					### costs per subject in intervention
   N=B/(prop.i*c.i+(1-prop.i)*c.c)	### total number of subjects as function of costs
@@ -87,13 +86,10 @@ f.OD3=function(p1,p2,p3,OR,ratio)
   {
     Fisher=n.i[ii]*F.i+n.c[ii]*F.c
     covmat=solve(Fisher)
-    
-    D.opt[ii]=det(covmat)
     c.opt[ii]=covmat[3,3]
    }
-   RE.D=(min(D.opt)/D.opt)^(1/3)
    RE.c=min(c.opt)/c.opt
-   output=cbind(prop.i,RE.D,RE.c)
+   output=cbind(prop.i,c.opt,RE.c)
    return(output)
 }
 
@@ -183,10 +179,9 @@ f.OD4=function(p1,p2,p3,p4,OR,ratio)
   ### optimality criterion as a function of prop.i ### fixed budget
   ####################################################################################################
   prop.i=seq(0.01,0.99,by=0.01)
-  D.opt=rep(0,length(prop.i))
   c.opt=rep(0,length(prop.i))
   
-  B=1000					### budget
+  B=1					### budget
   c.c=1						### costs per subject in control
   c.i=ratio						### costs per subject in intervention
   N=B/(prop.i*c.i+(1-prop.i)*c.c)		### total number of subjects as function of costs
@@ -197,13 +192,10 @@ f.OD4=function(p1,p2,p3,p4,OR,ratio)
   {
     Fisher=n.i[ii]*F.i+n.c[ii]*F.c
     covmat=solve(Fisher)
-    
-    D.opt[ii]=det(covmat)
     c.opt[ii]=covmat[4,4]
   }
-  RE.D=(min(D.opt)/D.opt)^(1/4)
   RE.c=min(c.opt)/c.opt
-  output=cbind(prop.i,RE.D,RE.c)
+  output=cbind(prop.i,c.opt,RE.c)
   return(output)
   
 }
@@ -304,10 +296,9 @@ f.OD5=function(p1,p2,p3,p4,p5,OR,ratio)
   ### optimality criterion as a function of prop.i ### fixed budget
   ####################################################################################################
   prop.i=seq(0.01,0.99,by=0.01)
-  D.opt=rep(0,length(prop.i))
   c.opt=rep(0,length(prop.i))
   
-  B=1000					### budget
+  B=1					### budget
   c.c=1						### costs per subject in control
   c.i=ratio						### costs per subject in intervention
   N=B/(prop.i*c.i+(1-prop.i)*c.c)		### total number of subjects as function of costs
@@ -318,14 +309,11 @@ f.OD5=function(p1,p2,p3,p4,p5,OR,ratio)
   {
     Fisher=n.i[ii]*F.i+n.c[ii]*F.c
     covmat=solve(Fisher)
-    
-    D.opt[ii]=det(covmat)
     c.opt[ii]=covmat[5,5]
   }
   
-  RE.D=(min(D.opt)/D.opt)^(1/5)
   RE.c=min(c.opt)/c.opt
-  output=cbind(prop.i,RE.D,RE.c)
+  output=cbind(prop.i,c.opt,RE.c)
   return(output)
 }
 
@@ -438,10 +426,9 @@ f.OD6=function(p1,p2,p3,p4,p5,p6,OR,ratio){
   ### optimality criterion as a function of prop.i ### fixed budget
   ####################################################################################################
   prop.i=seq(0.01,0.99,by=0.01)
-  D.opt=rep(0,length(prop.i))
   c.opt=rep(0,length(prop.i))
   
-  B=1000					### budget
+  B=1					### budget
   c.c=1 					### costs per subject in control
   c.i=ratio					### costs per subject in intervention
   N=B/(prop.i*c.i+(1-prop.i)*c.c)	### total number of subjects as function of costs
@@ -452,15 +439,12 @@ f.OD6=function(p1,p2,p3,p4,p5,p6,OR,ratio){
   {
     Fisher=n.i[ii]*F.i+n.c[ii]*F.c
     covmat=solve(Fisher)
-    
-    D.opt[ii]=det(covmat)
     c.opt[ii]=covmat[6,6]
   }
   
   
-  RE.D=(min(D.opt)/D.opt)^(1/6)
   RE.c=min(c.opt)/c.opt
-  output=cbind(prop.i,RE.D,RE.c)
+  output=cbind(prop.i,c.opt,RE.c)
   
 }
   
@@ -583,10 +567,9 @@ f.OD7=function(p1,p2,p3,p4,p5,p6,p7,OR,ratio){
   ### optimality criterion as a function of prop.i ### fixed budget
   ####################################################################################################
   prop.i=seq(0.01,0.99,by=0.01)
-  D.opt=rep(0,length(prop.i))
   c.opt=rep(0,length(prop.i))
   
-  B=1000					### budget
+  B=1					### budget
   c.c=1 					### costs per subject in control
   c.i=ratio					### costs per subject in intervention
   N=B/(prop.i*c.i+(1-prop.i)*c.c)	### total number of subjects as function of costs
@@ -597,16 +580,10 @@ f.OD7=function(p1,p2,p3,p4,p5,p6,p7,OR,ratio){
   {
     Fisher=n.i[ii]*F.i+n.c[ii]*F.c
     covmat=solve(Fisher)
-    
-    D.opt[ii]=det(covmat)
     c.opt[ii]=covmat[7,7]
   }
   
-  RE.D=(min(D.opt)/D.opt)^(1/7)
   RE.c=min(c.opt)/c.opt
-  output=cbind(prop.i,RE.D,RE.c)
+  output=cbind(prop.i,c.opt,RE.c)
   return(output)
 }
-
-
-
