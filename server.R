@@ -41,25 +41,9 @@ function(input, output, session) {
       })
   
 ################################################################################################################################
-### plot RE for D-optimality
+### plot RE for other proportions
 ################################################################################################################################  
-  output$plot3b1 <- renderPlotly({
-    output=f.OD3(input$p31,input$p32,input$p33,input$OR3,input$ratio3)
-    output=as.data.frame(output)
-    # use the key aesthetic/argument to help uniquely identify selected observations
-    key <- row.names(output)
-  
-          plot_ly(output, x = ~output[,1], y = ~output[,2], key = ~key,mode='lines',type="scatter") %>%
-          layout(dragmode = "select",
-             xaxis = list(title = "proportion subjects in intervention condition", range = c(0, 1), showgrid = F,zeroline=TRUE,showline = TRUE),
-             yaxis = list(title = "Relative Efficiency", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
-  })
-  
-  
-################################################################################################################################
-### plot RE for c-optimality
-################################################################################################################################  
-  output$plot3b2 <- renderPlotly({
+  output$plot3b <- renderPlotly({
     output=f.OD3(input$p31,input$p32,input$p33,input$OR3,input$ratio3)
     output=as.data.frame(output)
     # use the key aesthetic/argument to help uniquely identify selected observations
@@ -72,84 +56,97 @@ function(input, output, session) {
              yaxis = list(title = "Relative Efficiency", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
   })
   
-   
 ################################################################################################################################
-### text output optimal design for D-optimality
+### text output optimal design 
 ################################################################################################################################  
-   output$OD.3.D1 <- renderText({ 
-    output=f.OD3(input$p31,input$p32,input$p33,input$OR3,input$ratio3)
-    opt.prop=which(output[,2]==1)
-        paste("Optimal proportion subjects in intervention: ", output[opt.prop,1])
-  })
-  
-################################################################################################################################
-### text output RE balanced design for D-optimality
-################################################################################################################################  
-   output$OD.3.D2 <- renderText({ 
-     output=f.OD3(input$p31,input$p32,input$p33,input$OR3,input$ratio3)
-     paste("Relative efficiency of balanced design: ", round(output[50,2],2))
-   })
-
-################################################################################################################################
-### text output optimal design for c-optimality
-################################################################################################################################  
-   output$OD.3.c1 <- renderText({ 
+   output$OD.3.b1 <- renderText({ 
      output=f.OD3(input$p31,input$p32,input$p33,input$OR3,input$ratio3)
      opt.prop=which(output[,3]==1)
      paste("Optimal proportion subjects in intervention: ", output[opt.prop,1])
    })
    
 ################################################################################################################################
-### text output RE balanced design c-optimality
+### text output RE balanced design 
 ################################################################################################################################  
-   output$OD.3.c2 <- renderText({ 
+   output$OD.3.b2 <- renderText({ 
      output=f.OD3(input$p31,input$p32,input$p33,input$OR3,input$ratio3)
      paste("Relative efficiency of balanced design: ", round(output[50,3],2))
    })
 
 ################################################################################################################################
-### text output required sample size for sufficient power
+### plot RE for other population values beta
 ################################################################################################################################  
-   output$OD.3.c3 <- renderText({ 
+   output$plot3c <- renderPlotly({
+     
+     output=f.OD3(input$p31,input$p32,input$p33,input$OR3,input$ratio3)
+     opt.prop=which(output[,3]==1)
+     
+     OR=input$OR3
+     OR.true=sort(c(OR,seq(0.1,10,l=101)))
+     
+     RE=rep(0,length(OR.true))
+     
+     for(ii in 1:length(OR.true))
+     {
+       output=f.OD3(input$p31,input$p32,input$p33,OR.true[ii],input$ratio3)
+       RE[ii]=output[opt.prop,3]
+     }
+
+     RE.results=as.data.frame(cbind(OR.true,RE))
+     
+     key <- row.names(RE.results)
+     plot_ly(RE.results, x = ~RE.results[,1], y = ~RE.results[,2], key = ~key,mode='lines',type="scatter") %>%
+       layout(dragmode = "select",
+              xaxis = list(title = "Population value Odds Ratio",  showgrid = F,zeroline=TRUE,showline = TRUE),
+              yaxis = list(title = "Relative Efficiency", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
+     
+   })
+
+################################################################################################################################
+### plot of power versus budget
+################################################################################################################################  
+   output$plot3d <- renderPlotly({ 
      output=f.OD3(input$p31,input$p32,input$p33,input$OR3,input$ratio3)
      opt.prop=which(output[,3]==1)
      opt.prop=output[opt.prop,1]
-     opt.ratio=(1/opt.prop)-1
-     
+
      test=input$test3
      alpha=input$alpha3
-     power=input$power3
-     
-     p.c=c(input$p31,input$p32,input$p33)
+ 
      beta=log(input$OR3)
-     cp.c=cumsum(p.c)
-     cp.c=cp.c[cp.c<1]
-     logit.cp.c=log(cp.c/(1-cp.c))
-     logit.cp.i=logit.cp.c+beta
-     cp.i=exp(logit.cp.i)/(1+exp(logit.cp.i))
-     p.i=rep(0,3)				### response probabilities intervention
-     p.i[1]=cp.i[1]
-     p.i[2]=cp.i[2]-cp.i[1]
-     p.i[3]=1-cp.i[2]
      
-     p.mean=rep(0,3)
-     p.mean[1]=mean(c(p.i[1],p.c[1]))
-     p.mean[2]=mean(c(p.i[2],p.c[2]))
-     p.mean[3]=mean(c(p.i[3],p.c[3]))
-     
-     
+     # power for optimal allocation ratio
+     B=seq(10,10000)
+     V=min(output[,2])/B
+
      if(test==1)
-     total.n=(3*(opt.ratio+1)^2*(qnorm(1-alpha)+qnorm(power))^2)      / (opt.ratio*beta^2*(1-sum(p.mean^3)))
+      power=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha))
+
+     if(test==2)
+       power=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha/2))
+
+     # power for balanced design
+     V=output[50,2]/B
+
+     if(test==1)
+       power2=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha))
      
      if(test==2)
-       total.n=(3*(opt.ratio+1)^2*(qnorm(1-alpha/2)+qnorm(power))^2)      / (opt.ratio*beta^2*(1-sum(p.mean^3)))
+       power2=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha/2))
+
+     output=cbind(B,power,power2)
+     output=output[output[,3]<0.99,]
+     output=as.data.frame((output))
      
-       total.n=ceiling(total.n)
-     paste("Required total sample size to achieve sufficient power: ", total.n)
+     key <- row.names(output)
+     plot=plot_ly(output, x = ~output[,1], y = ~output[,2], key = ~key,mode='lines',type="scatter",name="optimal") 
+     plot=plot %>% add_lines(y=~output[,3],key = ~key,mode='lines',type="scatter",name="balanced")
+     plot=plot %>% layout(dragmode = "select",
+            xaxis = list(title = "Budget", range = c(10, max(output[,1])), showgrid = F,zeroline=TRUE,showline = TRUE),
+            yaxis = list(title = "Power", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
+     plot
    })
-   
-   
-   
+
 ######################################################################################################################
 ######################################################################################################################
 ######################################################################################################################
@@ -161,7 +158,6 @@ function(input, output, session) {
 ################################################################################################################################
 ### barplots probabilities 
 ################################################################################################################################  
-   
    output$plot4a <- renderPlot({
      
      validate(
@@ -188,28 +184,11 @@ function(input, output, session) {
      intervention=p.i
      barplot(cbind(control,intervention),beside=TRUE,ylim=c(0,1),ylab="probability",legend=c(1,2,3,4))
    })
-   
-################################################################################################################################
-### plot RE for D-optimality
-################################################################################################################################  
-   output$plot4b1 <- renderPlotly({
-     output=f.OD4(input$p41,input$p42,input$p43,input$p44,input$OR4,input$ratio4)
 
-     output=as.data.frame(output)
-     # use the key aesthetic/argument to help uniquely identify selected observations
-     key <- row.names(output)
-     
-     plot_ly(output, x = ~output[,1], y = ~output[,2], key = ~key,mode='lines',type="scatter") %>%
-       layout(dragmode = "select",
-              xaxis = list(title = "proportion subjects in intervention condition", range = c(0, 1), showgrid = F,zeroline=TRUE,showline = TRUE),
-              yaxis = list(title = "Relative Efficiency", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
-     
-   })
-   
 ################################################################################################################################
-### plot RE for c-optimality
+### plot RE for other proportions
 ################################################################################################################################  
-   output$plot4b2 <- renderPlotly({
+   output$plot4b <- renderPlotly({
      output=f.OD4(input$p41,input$p42,input$p43,input$p44,input$OR4,input$ratio4)
      
      output=as.data.frame(output)
@@ -222,87 +201,98 @@ function(input, output, session) {
               yaxis = list(title = "Relative Efficiency", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
      
    })
-   
+
 ################################################################################################################################
-### text output optimal design for D-optimality
+### text output optimal design
 ################################################################################################################################  
-   output$OD.4.D1 <- renderText({ 
-     output=f.OD4(input$p41,input$p42,input$p43,input$p44,input$OR4,input$ratio4)
-     opt.prop=which(output[,2]==1)
-     paste("Optimal proportion subjects in intervention: ", output[opt.prop,1])
-   })
-   
-################################################################################################################################
-### text output RE balanced design for D-optimality
-################################################################################################################################  
-   output$OD.4.D2 <- renderText({ 
-     output=f.OD4(input$p41,input$p42,input$p43,input$p44,input$OR4,input$ratio4)
-     paste("Relative efficiency of balanced design: ", round(output[50,2],2))
-   })
-   
-################################################################################################################################
-### text output optimal design for c-optimality
-################################################################################################################################  
-   output$OD.4.c1 <- renderText({ 
+   output$OD.4.b1 <- renderText({ 
      output=f.OD4(input$p41,input$p42,input$p43,input$p44,input$OR4,input$ratio4)
      opt.prop=which(output[,3]==1)
      paste("Optimal proportion subjects in intervention: ", output[opt.prop,1])
    })
    
 ################################################################################################################################
-### text output RE balanced design c-optimality
+### text output RE balanced design
 ################################################################################################################################  
-   output$OD.4.c2 <- renderText({ 
+   output$OD.4.b2 <- renderText({ 
      output=f.OD4(input$p41,input$p42,input$p43,input$p44,input$OR4,input$ratio4)
      paste("Relative efficiency of balanced design: ", round(output[50,3],2))
    })
 
-   
+################################################################################################################################
+### plot RE for other population values beta
+################################################################################################################################  
+   output$plot4c <- renderPlotly({
+     
+     output=f.OD4(input$p41,input$p42,input$p43,input$p44,input$OR4,input$ratio4)
+     opt.prop=which(output[,3]==1)
+     
+     OR=input$OR4
+     OR.true=sort(c(OR,seq(0.1,10,l=101)))
+     
+     RE=rep(0,length(OR.true))
+     
+     for(ii in 1:length(OR.true))
+     {
+       output=f.OD4(input$p41,input$p42,input$p43,input$p44,OR.true[ii],input$ratio4)
+       RE[ii]=output[opt.prop,3]
+     }
+     
+     RE.results=as.data.frame(cbind(OR.true,RE))
+     
+     key <- row.names(RE.results)
+     plot_ly(RE.results, x = ~RE.results[,1], y = ~RE.results[,2], key = ~key,mode='lines',type="scatter") %>%
+       layout(dragmode = "select",
+              xaxis = list(title = "Population value Odds Ratio",  showgrid = F,zeroline=TRUE,showline = TRUE),
+              yaxis = list(title = "Relative Efficiency", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
+     
+   })
    
 ################################################################################################################################
-### text output required sample size for sufficient power
+### plot of power versus budget
 ################################################################################################################################  
-   output$OD.4.c3 <- renderText({ 
+   output$plot4d <- renderPlotly({ 
      output=f.OD4(input$p41,input$p42,input$p43,input$p44,input$OR4,input$ratio4)
      opt.prop=which(output[,3]==1)
      opt.prop=output[opt.prop,1]
-     opt.ratio=(1/opt.prop)-1
      
      test=input$test4
      alpha=input$alpha4
-     power=input$power4
      
-     p.c=c(input$p41,input$p42,input$p43,input$p44)
      beta=log(input$OR4)
-     cp.c=cumsum(p.c)
-     cp.c=cp.c[cp.c<1]
-     logit.cp.c=log(cp.c/(1-cp.c))
-     logit.cp.i=logit.cp.c+beta
-     cp.i=exp(logit.cp.i)/(1+exp(logit.cp.i))
-     p.i=rep(0,4)				### response probabilities intervention
-     p.i[1]=cp.i[1]
-     p.i[2]=cp.i[2]-cp.i[1]
-     p.i[3]=cp.i[3]-cp.i[2]
-     p.i[4]=1-cp.i[3]
-     
-     
-     p.mean=rep(0,4)
-     p.mean[1]=mean(c(p.i[1],p.c[1]))
-     p.mean[2]=mean(c(p.i[2],p.c[2]))
-     p.mean[3]=mean(c(p.i[3],p.c[3]))
-     p.mean[4]=mean(c(p.i[4],p.c[4]))
-     
+
+     # power for optimal allocation ratio
+     B=seq(10,10000)
+     V=min(output[,2])/B
      
      if(test==1)
-       total.n=(3*(opt.ratio+1)^2*(qnorm(1-alpha)+qnorm(power))^2)      / (opt.ratio*beta^2*(1-sum(p.mean^3)))
+       power=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha))
      
      if(test==2)
-       total.n=(3*(opt.ratio+1)^2*(qnorm(1-alpha/2)+qnorm(power))^2)      / (opt.ratio*beta^2*(1-sum(p.mean^3)))
+       power=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha/2))
      
-     total.n=ceiling(total.n)
-     paste("Required total sample size to achieve sufficient power: ", total.n)
-   })   
-   
+     # power for balanced design
+     V=output[50,2]/B
+     
+     if(test==1)
+       power2=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha))
+     
+     if(test==2)
+       power2=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha/2))
+     
+     output=cbind(B,power,power2)
+     output=output[output[,3]<0.99,]
+     output=as.data.frame((output))
+     
+     key <- row.names(output)
+     plot=plot_ly(output, x = ~output[,1], y = ~output[,2], key = ~key,mode='lines',type="scatter",name="optimal") 
+     plot=plot %>% add_lines(y=~output[,3],key = ~key,mode='lines',type="scatter",name="balanced")
+     plot=plot %>% layout(dragmode = "select",
+                          xaxis = list(title = "Budget", range = c(10, max(output[,1])), showgrid = F,zeroline=TRUE,showline = TRUE),
+                          yaxis = list(title = "Power", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
+     plot
+   })
+
 ######################################################################################################################
 ######################################################################################################################
 ######################################################################################################################
@@ -314,7 +304,6 @@ function(input, output, session) {
 ################################################################################################################################
 ### barplots probabilities 
 ################################################################################################################################  
-   
    output$plot5a <- renderPlot({
      
      validate(
@@ -343,28 +332,11 @@ function(input, output, session) {
      intervention=p.i
      barplot(cbind(control,intervention),beside=TRUE,ylim=c(0,1),ylab="probability",legend=c(1,2,3,4,5))
    })
-   
-################################################################################################################################
-### plot RE for D-optimality
-################################################################################################################################  
-   output$plot5b1 <- renderPlotly({
-     output=f.OD5(input$p51,input$p52,input$p53,input$p54,input$p55,input$OR5,input$ratio5)
 
-     output=as.data.frame(output)
-     # use the key aesthetic/argument to help uniquely identify selected observations
-     key <- row.names(output)
-     
-     plot_ly(output, x = ~output[,1], y = ~output[,2], key = ~key,mode='lines',type="scatter") %>%
-       layout(dragmode = "select",
-              xaxis = list(title = "proportion subjects in intervention condition", range = c(0, 1), showgrid = F,zeroline=TRUE,showline = TRUE),
-              yaxis = list(title = "Relative Efficiency", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
-     
-   })
-   
 ################################################################################################################################
-### plot RE for c-optimality
+### plot RE for other proportions
 ################################################################################################################################  
-   output$plot5b2 <- renderPlotly({
+   output$plot5b <- renderPlotly({
      output=f.OD5(input$p51,input$p52,input$p53,input$p54,input$p55,input$OR5,input$ratio5)
 
      output=as.data.frame(output)
@@ -379,84 +351,95 @@ function(input, output, session) {
    })
 
 ################################################################################################################################
-### text output optimal design for D-optimality
+### text output optimal design
 ################################################################################################################################  
-   output$OD.5.D1 <- renderText({ 
-     output=f.OD5(input$p51,input$p52,input$p53,input$p54,input$p55,input$OR5,input$ratio5)
-     opt.prop=which(output[,2]==1)
-     paste("Optimal proportion subjects in intervention: ", output[opt.prop,1])
-   })
-   
-################################################################################################################################
-### text output RE balanced design for D-optimality
-################################################################################################################################  
-   output$OD.5.D2 <- renderText({ 
-     output=f.OD5(input$p51,input$p52,input$p53,input$p54,input$p55,input$OR5,input$ratio5)
-     paste("Relative efficiency of balanced design: ", round(output[50,2],2))
-   })
-   
-################################################################################################################################
-### text output optimal design for c-optimality
-################################################################################################################################  
-   output$OD.5.c1 <- renderText({ 
+   output$OD.5.b1 <- renderText({ 
      output=f.OD5(input$p51,input$p52,input$p53,input$p54,input$p55,input$OR5,input$ratio5)
      opt.prop=which(output[,3]==1)
      paste("Optimal proportion subjects in intervention: ", output[opt.prop,1])
    })
    
 ################################################################################################################################
-### text output RE balanced design c-optimality
+### text output RE balanced design
 ################################################################################################################################  
-   output$OD.5.c2 <- renderText({ 
+   output$OD.5.b2 <- renderText({ 
      output=f.OD5(input$p51,input$p52,input$p53,input$p54,input$p55,input$OR5,input$ratio5)
      paste("Relative efficiency of balanced design: ", round(output[50,3],2))
    })
-   
+
 ################################################################################################################################
-### text output required sample size for sufficient power
+### plot RE for other population values beta
 ################################################################################################################################  
-   output$OD.5.c3 <- renderText({ 
+   output$plot5c <- renderPlotly({
+     
+     output=f.OD5(input$p51,input$p52,input$p53,input$p54,input$p55,input$OR5,input$ratio5)
+     opt.prop=which(output[,3]==1)
+     
+     OR=input$OR5
+     OR.true=sort(c(OR,seq(0.1,10,l=101)))
+     
+     RE=rep(0,length(OR.true))
+     
+     for(ii in 1:length(OR.true))
+     {
+       output=f.OD5(input$p51,input$p52,input$p53,input$p54,input$p55,OR.true[ii],input$ratio5)
+       RE[ii]=output[opt.prop,3]
+     }
+     
+     RE.results=as.data.frame(cbind(OR.true,RE))
+     
+     key <- row.names(RE.results)
+     plot_ly(RE.results, x = ~RE.results[,1], y = ~RE.results[,2], key = ~key,mode='lines',type="scatter") %>%
+       layout(dragmode = "select",
+              xaxis = list(title = "Population value Odds Ratio",  showgrid = F,zeroline=TRUE,showline = TRUE),
+              yaxis = list(title = "Relative Efficiency", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
+     
+   })
+ 
+################################################################################################################################
+### plot of power versus budget
+################################################################################################################################  
+   output$plot5d <- renderPlotly({ 
      output=f.OD5(input$p51,input$p52,input$p53,input$p54,input$p55,input$OR5,input$ratio5)
      opt.prop=which(output[,3]==1)
      opt.prop=output[opt.prop,1]
-     opt.ratio=(1/opt.prop)-1
      
      test=input$test5
      alpha=input$alpha5
-     power=input$power5
      
-     p.c=c(input$p51,input$p52,input$p53,input$p54,input$p55)
      beta=log(input$OR5)
-     cp.c=cumsum(p.c)
-     cp.c=cp.c[cp.c<1]
-     logit.cp.c=log(cp.c/(1-cp.c))
-     logit.cp.i=logit.cp.c+beta
-     cp.i=exp(logit.cp.i)/(1+exp(logit.cp.i))
-     p.i=rep(0,5)				### response probabilities intervention
-     p.i[1]=cp.i[1]
-     p.i[2]=cp.i[2]-cp.i[1]
-     p.i[3]=cp.i[3]-cp.i[2]
-     p.i[4]=cp.i[4]-cp.i[3]
-     p.i[5]=1-cp.i[4]
-     
-     
-     p.mean=rep(0,5)
-     p.mean[1]=mean(c(p.i[1],p.c[1]))
-     p.mean[2]=mean(c(p.i[2],p.c[2]))
-     p.mean[3]=mean(c(p.i[3],p.c[3]))
-     p.mean[4]=mean(c(p.i[4],p.c[4]))
-     p.mean[5]=mean(c(p.i[5],p.c[5]))
-     
+     # power for optimal allocation ratio
+     B=seq(10,10000)
+     V=min(output[,2])/B
      
      if(test==1)
-       total.n=(3*(opt.ratio+1)^2*(qnorm(1-alpha)+qnorm(power))^2)      / (opt.ratio*beta^2*(1-sum(p.mean^3)))
+       power=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha))
      
      if(test==2)
-       total.n=(3*(opt.ratio+1)^2*(qnorm(1-alpha/2)+qnorm(power))^2)      / (opt.ratio*beta^2*(1-sum(p.mean^3)))
+       power=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha/2))
      
-     total.n=ceiling(total.n)
-     paste("Required total sample size to achieve sufficient power: ", total.n)
-   })    
+     # power for balanced design
+     V=output[50,2]/B
+     
+     if(test==1)
+       power2=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha))
+     
+     if(test==2)
+       power2=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha/2))
+     
+     output=cbind(B,power,power2)
+     output=output[output[,3]<0.99,]
+     output=as.data.frame((output))
+     
+     key <- row.names(output)
+     plot=plot_ly(output, x = ~output[,1], y = ~output[,2], key = ~key,mode='lines',type="scatter",name="optimal") 
+     plot=plot %>% add_lines(y=~output[,3],key = ~key,mode='lines',type="scatter",name="balanced")
+     plot=plot %>% layout(dragmode = "select",
+                          xaxis = list(title = "Budget", range = c(10, max(output[,1])), showgrid = F,zeroline=TRUE,showline = TRUE),
+                          yaxis = list(title = "Power", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
+     plot
+   })
+   
    
 ######################################################################################################################
 ######################################################################################################################
@@ -469,7 +452,6 @@ function(input, output, session) {
 ################################################################################################################################
 ### barplots probabilities 
 ################################################################################################################################  
-   
    output$plot6a <- renderPlot({
 
      validate(
@@ -502,25 +484,9 @@ function(input, output, session) {
    })
    
 ################################################################################################################################
-### plot RE for D-optimality
+### plot RE for other proportions
 ################################################################################################################################  
-   output$plot6b1 <- renderPlotly({
-     output=f.OD6(input$p61,input$p62,input$p63,input$p64,input$p65,input$p66,input$OR6,input$ratio6)
-     output=as.data.frame(output)
-     # use the key aesthetic/argument to help uniquely identify selected observations
-     key <- row.names(output)
-     
-     plot_ly(output, x = ~output[,1], y = ~output[,2], key = ~key,mode='lines',type="scatter") %>%
-       layout(dragmode = "select",
-              xaxis = list(title = "proportion subjects in intervention condition", range = c(0, 1), showgrid = F,zeroline=TRUE,showline = TRUE),
-              yaxis = list(title = "Relative Efficiency", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
-     
-   })
-   
-################################################################################################################################
-### plot RE for c-optimality
-################################################################################################################################  
-   output$plot6b2 <- renderPlotly({
+   output$plot6b <- renderPlotly({
      output=f.OD6(input$p61,input$p62,input$p63,input$p64,input$p65,input$p66,input$OR6,input$ratio6)
 
      output=as.data.frame(output)
@@ -533,92 +499,98 @@ function(input, output, session) {
               yaxis = list(title = "Relative Efficiency", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
      
    })
-   
+
 ################################################################################################################################
-### text output optimal design for D-optimality
+### text output optimal design
 ################################################################################################################################  
-   output$OD.6.D1 <- renderText({ 
-     output=f.OD6(input$p61,input$p62,input$p63,input$p64,input$p65,input$p66,input$OR6,input$ratio6)
-     opt.prop=which(output[,2]==1)
-     paste("Optimal proportion subjects in intervention: ", output[opt.prop,1])
-   })
-   
-################################################################################################################################
-### text output RE balanced design for D-optimality
-################################################################################################################################  
-   output$OD.6.D2 <- renderText({ 
-     output=f.OD6(input$p61,input$p62,input$p63,input$p64,input$p65,input$p66,input$OR6,input$ratio6)
-     paste("Relative efficiency of balanced design: ", round(output[50,2],2))
-   })
-   
-################################################################################################################################
-### text output optimal design for c-optimality
-################################################################################################################################  
-   output$OD.6.c1 <- renderText({ 
+   output$OD.6.b1 <- renderText({ 
      output=f.OD6(input$p61,input$p62,input$p63,input$p64,input$p65,input$p66,input$OR6,input$ratio6)
      opt.prop=which(output[,3]==1)
      paste("Optimal proportion subjects in intervention: ", output[opt.prop,1])
    })
    
 ################################################################################################################################
-### text output RE balanced design c-optimality
+### text output RE balanced design
 ################################################################################################################################  
-   output$OD.6.c2 <- renderText({ 
+   output$OD.6.b2 <- renderText({ 
      output=f.OD6(input$p61,input$p62,input$p63,input$p64,input$p65,input$p66,input$OR6,input$ratio6)
      paste("Relative efficiency of balanced design: ", round(output[50,3],2))
    })
-   
-   
-   
+
 ################################################################################################################################
-### text output required sample size for sufficient power
+### plot RE for other population values beta
 ################################################################################################################################  
-   output$OD.6.c3 <- renderText({ 
+   output$plot6c <- renderPlotly({
+     
+     output=f.OD6(input$p61,input$p62,input$p63,input$p64,input$p65,input$p66,input$OR6,input$ratio6)
+     opt.prop=which(output[,3]==1)
+     
+     OR=input$OR6
+     OR.true=sort(c(OR,seq(0.1,10,l=101)))
+     
+     RE=rep(0,length(OR.true))
+     
+     for(ii in 1:length(OR.true))
+     {
+       output=f.OD6(input$p61,input$p62,input$p63,input$p64,input$p65,input$p66,OR.true[ii],input$ratio6)
+       RE[ii]=output[opt.prop,3]
+     }
+     
+     RE.results=as.data.frame(cbind(OR.true,RE))
+     
+     key <- row.names(RE.results)
+     plot_ly(RE.results, x = ~RE.results[,1], y = ~RE.results[,2], key = ~key,mode='lines',type="scatter") %>%
+       layout(dragmode = "select",
+              xaxis = list(title = "Population value Odds Ratio",  showgrid = F,zeroline=TRUE,showline = TRUE),
+              yaxis = list(title = "Relative Efficiency", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
+     
+   })
+
+################################################################################################################################
+### plot of power versus budget
+################################################################################################################################  
+   output$plot6d <- renderPlotly({ 
      output=f.OD6(input$p61,input$p62,input$p63,input$p64,input$p65,input$p66,input$OR6,input$ratio6)
      opt.prop=which(output[,3]==1)
      opt.prop=output[opt.prop,1]
-     opt.ratio=(1/opt.prop)-1
      
      test=input$test6
      alpha=input$alpha6
-     power=input$power6
      
-     p.c=c(input$p61,input$p62,input$p63,input$p64,input$p65,input$p66)
      beta=log(input$OR6)
-     cp.c=cumsum(p.c)
-     cp.c=cp.c[cp.c<1]
-     logit.cp.c=log(cp.c/(1-cp.c))
-     logit.cp.i=logit.cp.c+beta
-     cp.i=exp(logit.cp.i)/(1+exp(logit.cp.i))
-     p.i=rep(0,6)				### response probabilities intervention
-     p.i[1]=cp.i[1]
-     p.i[2]=cp.i[2]-cp.i[1]
-     p.i[3]=cp.i[3]-cp.i[2]
-     p.i[4]=cp.i[4]-cp.i[3]
-     p.i[5]=cp.i[5]-cp.i[4]
-     p.i[6]=1-cp.i[5]
      
-     
-     p.mean=rep(0,6)
-     p.mean[1]=mean(c(p.i[1],p.c[1]))
-     p.mean[2]=mean(c(p.i[2],p.c[2]))
-     p.mean[3]=mean(c(p.i[3],p.c[3]))
-     p.mean[4]=mean(c(p.i[4],p.c[4]))
-     p.mean[5]=mean(c(p.i[5],p.c[5]))
-     p.mean[6]=mean(c(p.i[6],p.c[6]))
-     
+     # power for optimal allocation ratio
+     B=seq(10,10000)
+     V=min(output[,2])/B
      
      if(test==1)
-       total.n=(3*(opt.ratio+1)^2*(qnorm(1-alpha)+qnorm(power))^2)      / (opt.ratio*beta^2*(1-sum(p.mean^3)))
+       power=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha))
      
      if(test==2)
-       total.n=(3*(opt.ratio+1)^2*(qnorm(1-alpha/2)+qnorm(power))^2)      / (opt.ratio*beta^2*(1-sum(p.mean^3)))
+       power=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha/2))
      
-     total.n=ceiling(total.n)
-     paste("Required total sample size to achieve sufficient power: ", total.n)
-   })    
- 
-   
+     # power for balanced design
+     V=output[50,2]/B
+     
+     if(test==1)
+       power2=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha))
+     
+     if(test==2)
+       power2=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha/2))
+     
+     output=cbind(B,power,power2)
+     output=output[output[,3]<0.99,]
+     output=as.data.frame((output))
+     
+     key <- row.names(output)
+     plot=plot_ly(output, x = ~output[,1], y = ~output[,2], key = ~key,mode='lines',type="scatter",name="optimal") 
+     plot=plot %>% add_lines(y=~output[,3],key = ~key,mode='lines',type="scatter",name="balanced")
+     plot=plot %>% layout(dragmode = "select",
+                          xaxis = list(title = "Budget", range = c(10, max(output[,1])), showgrid = F,zeroline=TRUE,showline = TRUE),
+                          yaxis = list(title = "Power", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
+     plot
+   })
+
 ######################################################################################################################
 ######################################################################################################################
 ######################################################################################################################
@@ -630,7 +602,6 @@ function(input, output, session) {
 ################################################################################################################################
 ### barplots probabilities 
 ################################################################################################################################  
-   
    output$plot7a <- renderPlot({
 
      validate(
@@ -663,28 +634,11 @@ function(input, output, session) {
      intervention=p.i
      barplot(cbind(control,intervention),beside=TRUE,ylim=c(0,1),ylab="probability",legend=c(1,2,3,4,5,6,7))
    })
-   
-################################################################################################################################
-### plot RE for D-optimality
-################################################################################################################################  
-   output$plot7b1 <- renderPlotly({
-     output=f.OD7(input$p71,input$p72,input$p73,input$p74,input$p75,input$p76,input$p77,input$OR7,input$ratio7)
-
-     output=as.data.frame(output)
-     # use the key aesthetic/argument to help uniquely identify selected observations
-     key <- row.names(output)
-     
-     plot_ly(output, x = ~output[,1], y = ~output[,2], key = ~key,mode='lines',type="scatter") %>%
-       layout(dragmode = "select",
-              xaxis = list(title = "proportion subjects in intervention condition", range = c(0, 1), showgrid = F,zeroline=TRUE,showline = TRUE),
-              yaxis = list(title = "Relative Efficiency", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
-     
-   })
 
 ################################################################################################################################
-### plot RE for c-optimality
+### plot RE for other proportions
 ################################################################################################################################  
-   output$plot7b2 <- renderPlotly({
+   output$plot7b <- renderPlotly({
      output=f.OD7(input$p71,input$p72,input$p73,input$p74,input$p75,input$p76,input$p77,input$OR7,input$ratio7)
      
      output=as.data.frame(output)
@@ -699,91 +653,95 @@ function(input, output, session) {
    })
    
 ################################################################################################################################
-### text output optimal design for D-optimality
+### text output optimal design
 ################################################################################################################################  
-   output$OD.7.D1 <- renderText({ 
-     output=f.OD7(input$p71,input$p72,input$p73,input$p74,input$p75,input$p76,input$p77,input$OR7,input$ratio7)
-     opt.prop=which(output[,2]==1)
-     paste("Optimal proportion subjects in intervention: ", output[opt.prop,1])
-   })
-   
-################################################################################################################################
-### text output RE balanced design for D-optimality
-################################################################################################################################  
-   output$OD.7.D2 <- renderText({ 
-     output=f.OD7(input$p71,input$p72,input$p73,input$p74,input$p75,input$p76,input$p77,input$OR7,input$ratio7)
-     paste("Relative efficiency of balanced design: ", round(output[50,2],2))
-   })
-   
-################################################################################################################################
-### text output optimal design for c-optimality
-################################################################################################################################  
-   output$OD.7.c1 <- renderText({ 
+   output$OD.7.b1 <- renderText({ 
      output=f.OD7(input$p71,input$p72,input$p73,input$p74,input$p75,input$p76,input$p77,input$OR7,input$ratio7)
      opt.prop=which(output[,3]==1)
      paste("Optimal proportion subjects in intervention: ", output[opt.prop,1])
    })
    
 ################################################################################################################################
-### text output RE balanced design c-optimality
+### text output RE balanced design
 ################################################################################################################################  
-   output$OD.7.c2 <- renderText({ 
+   output$OD.7.b2 <- renderText({ 
      output=f.OD7(input$p71,input$p72,input$p73,input$p74,input$p75,input$p76,input$p77,input$OR7,input$ratio7)
      paste("Relative efficiency of balanced design: ", round(output[50,3],2))
    })
    
-   
 ################################################################################################################################
-### text output required sample size for sufficient power
+### plot RE for other population values beta
 ################################################################################################################################  
-   output$OD.7.c3 <- renderText({ 
+   output$plot7c <- renderPlotly({
+     
      output=f.OD7(input$p71,input$p72,input$p73,input$p74,input$p75,input$p76,input$p77,input$OR7,input$ratio7)
      opt.prop=which(output[,3]==1)
+     
+     OR=input$OR7
+     OR.true=sort(c(OR,seq(0.1,10,l=101)))
+     
+     RE=rep(0,length(OR.true))
+     
+     for(ii in 1:length(OR.true))
+     {
+       output=f.OD7(input$p71,input$p72,input$p73,input$p74,input$p75,input$p76,input$p77,OR.true[ii],input$ratio7)
+       RE[ii]=output[opt.prop,3]
+     }
+     
+     RE.results=as.data.frame(cbind(OR.true,RE))
+     
+     key <- row.names(RE.results)
+     plot_ly(RE.results, x = ~RE.results[,1], y = ~RE.results[,2], key = ~key,mode='lines',type="scatter") %>%
+       layout(dragmode = "select",
+              xaxis = list(title = "Population value Odds Ratio",  showgrid = F,zeroline=TRUE,showline = TRUE),
+              yaxis = list(title = "Relative Efficiency", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
+     
+   })
+
+################################################################################################################################
+### plot of power versus budget
+################################################################################################################################  
+   output$plot7d <- renderPlotly({ 
+     output=f.OD7(input$p71,input$p72,input$p73,input$p74,input$p75,input$p76,input$p77,input$OR7,input$ratio7)
+     
+     opt.prop=which(output[,3]==1)
      opt.prop=output[opt.prop,1]
-     opt.ratio=(1/opt.prop)-1
      
      test=input$test7
      alpha=input$alpha7
-     power=input$power7
      
-     p.c=c(input$p71,input$p72,input$p73,input$p74,input$p75,input$p76,input$p77)
      beta=log(input$OR7)
-     cp.c=cumsum(p.c)
-     cp.c=cp.c[cp.c<1]
-     logit.cp.c=log(cp.c/(1-cp.c))
-     logit.cp.i=logit.cp.c+beta
-     cp.i=exp(logit.cp.i)/(1+exp(logit.cp.i))
-     p.i=rep(0,7)				### response probabilities intervention
-     p.i[1]=cp.i[1]
-     p.i[2]=cp.i[2]-cp.i[1]
-     p.i[3]=cp.i[3]-cp.i[2]
-     p.i[4]=cp.i[4]-cp.i[3]
-     p.i[5]=cp.i[5]-cp.i[4]
-     p.i[6]=cp.i[6]-cp.i[5]
-     p.i[7]=1-cp.i[6]
      
-     
-     p.mean=rep(0,7)
-     p.mean[1]=mean(c(p.i[1],p.c[1]))
-     p.mean[2]=mean(c(p.i[2],p.c[2]))
-     p.mean[3]=mean(c(p.i[3],p.c[3]))
-     p.mean[4]=mean(c(p.i[4],p.c[4]))
-     p.mean[5]=mean(c(p.i[5],p.c[5]))
-     p.mean[6]=mean(c(p.i[6],p.c[6]))
-     p.mean[7]=mean(c(p.i[7],p.c[7]))
-     
+     # power for optimal allocation ratio
+     B=seq(10,10000)
+     V=min(output[,2])/B
      
      if(test==1)
-       total.n=(3*(opt.ratio+1)^2*(qnorm(1-alpha)+qnorm(power))^2)      / (opt.ratio*beta^2*(1-sum(p.mean^3)))
+       power=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha))
      
      if(test==2)
-       total.n=(3*(opt.ratio+1)^2*(qnorm(1-alpha/2)+qnorm(power))^2)      / (opt.ratio*beta^2*(1-sum(p.mean^3)))
+       power=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha/2))
      
-     total.n=ceiling(total.n)
-     paste("Required total sample size to achieve sufficient power: ", total.n)
-   })    
-   
-   
+     # power for balanced design
+     V=output[50,2]/B
+     
+     if(test==1)
+       power2=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha))
+     
+     if(test==2)
+       power2=pnorm(abs(beta)/sqrt(V)-qnorm(1-alpha/2))
+     
+     output=cbind(B,power,power2)
+     output=output[output[,3]<0.99,]
+     output=as.data.frame((output))
+     
+     key <- row.names(output)
+     plot=plot_ly(output, x = ~output[,1], y = ~output[,2], key = ~key,mode='lines',type="scatter",name="optimal") 
+     plot=plot %>% add_lines(y=~output[,3],key = ~key,mode='lines',type="scatter",name="balanced")
+     plot=plot %>% layout(dragmode = "select",
+                          xaxis = list(title = "Budget", range = c(10, max(output[,1])), showgrid = F,zeroline=TRUE,showline = TRUE),
+                          yaxis = list(title = "Power", range=c(0,1.05),showgrid = T,zeroline=TRUE,showline = TRUE))
+     plot
+   })
 
 }
-
