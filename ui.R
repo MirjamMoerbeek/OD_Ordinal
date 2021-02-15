@@ -209,7 +209,7 @@ navbarPage(theme = shinytheme("cerulean"),"Optimal treatment allocation ordinal 
                         
                         ,
                         column(4,
-                               h3("Power graph"),
+                               h3("Robustness graph"),
                                plotlyOutput("plot7c", width = 400, height = 350),
                                h5("This graph shows how well the optimal design for the prior estimate of the odds ratio performs if the population value of the odds ratio is different.")
                         ),
